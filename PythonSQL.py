@@ -1,7 +1,6 @@
 
 import mysql.connector
 import pandas as pd
-from collections import defaultdict
 from mysql.connector import Error
 
 
