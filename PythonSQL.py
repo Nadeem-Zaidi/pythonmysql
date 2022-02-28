@@ -1,4 +1,3 @@
-
 import mysql.connector
 import pandas as pd
 from mysql.connector import Error
@@ -26,28 +25,30 @@ class Sql:
         except Error as e:
             print(f"error occured : {e}")
 
-    def test(self, tablename):
-        query = f"select * from {tablename}"
-        try:
-            allRecords = self.cursor.execute(query)
-            result = self.cursor.fetchall()
-            print(result)
-        except Error as e:
-            print(f"error occured: {e}")
-        except AttributeError as e:
-            print(f"error occured: {e}")
+    def closedb(self):
+        print("closing database")
+        self.cursor.close()
+        self.conn.close()
+        print("database closed")
 
     def TableExist(self, tablename):
         r = f'select count(*) from information_schema.tables where table_schema=DATABASE() and table_name="{tablename}"'
-        self.cursor.execute(r)
-        p = self.cursor.fetchall()[0][0]
-        return p
+        try:
+            self.cursor.execute(r)
+            p = self.cursor.fetchall()[0][0]
+        except Error as e:
+            print("closing database")
+            self.cursor.close()
+            self.conn.close()
+            print(e)
+
+        else:
+            return p
 
     def createTable(self, tablename, **k):
-        r = f'select count(*) from information_schema.tables where table_schema=DATABASE() and table_name="{tablename}"'
-        self.cursor.execute(r)
-        p = self.cursor.fetchall()[0][0]
-        if p == 0:
+        table_exist = self.TableExist(tablename)
+
+        if table_exist == 0:
             d = []
             for key in k:
                 d.append(f"{key} {' '.join(k[key])}")
@@ -88,12 +89,20 @@ class Sql:
                 for key, value in kwargs.items():
                     if (isinstance(value, int) or isinstance(value, float)) and key != 'limit' and key != 'orderBy':
                         where_query_list.append(f"{key}={value}")
-                    if(isinstance(value, str)) and key != 'limit' and key != 'orderBy':
+                    if (isinstance(value, str)) and key != 'limit' and key != 'orderBy':
                         where_query_list.append(f"{key}='{value}'")
-                    if key == 'limit' and len(value) >= 2:
+
+                    if key == 'limit' and len(value) == 2:
                         whereQuery2 += f" {key} {value[0]},{value[1]}"
                     elif key == 'limit' and len(value) == 1:
                         whereQuery2 += f" {key} {value[0]}"
+                    elif key == 'limit' and len(value) > 2:
+                        print("Lower limit and upper limit can not be zero and also negative limit is not allowed")
+                        whereQuery2 = " "
+
+                    else:
+                        print("Limit should be only of length.Lower Limit and Upper Limit")
+
                     if key == 'orderBy' and len(value) > 0:
                         for i in value:
                             orderby += f"{i} "
@@ -121,7 +130,7 @@ class Sql:
             # if columns != None and len(whereQueryList) == 0 and whereQuery2:
             #     queryStatement = f"select {columns} from {tableName} {whereQuery2}"
 
-            print(query_statement)
+            print(f"Running :  {query_statement}")
             df = pd.read_sql(query_statement, self.conn)
             print(df)
         else:
@@ -130,5 +139,6 @@ class Sql:
 
 sql = Sql(user='root', host='localhost', password='owl', database='fastapi')
 # sql.fetchData("blogg")
-# sql.createTable("demo1", name=("varchar(20)", "not null"), roll=("int",))
-sql.fetchData("testing",limit=(10,))
+sql.createTable("demo1", name=("varchar(20)", "not null"), roll=("int",))
+sql.fetchData("testing", orderBy=('ResponseId desc',), limit=(13, 8))
+sql.closedb()
