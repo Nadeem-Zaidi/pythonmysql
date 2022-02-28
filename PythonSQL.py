@@ -37,50 +37,6 @@ class Sql:
         except AttributeError as e:
             print(f"error occured: {e}")
 
-    def fetchData(self, tablename, *columns, **where):
-        columnsData = None
-        whereClauseList = []
-        whereClause = None
-        if len(columns) > 0:
-            columnsData = ",".join(columns)
-        if where.keys():
-            print("checking where")
-            for key in where:
-                if isinstance(where[key], int) or isinstance(where[key], float):
-                    whereClauseList.append(f"{key}={where[key]}")
-                else:
-                    whereClauseList.append(f"{key}='{where[key]}'")
-
-            whereClause = " and ".join(whereClauseList)
-            print(whereClause)
-
-        if columnsData == None and whereClause == None:
-            query = f"select * from {tablename}"
-            result = pd.read_sql(query, self.conn)
-            # self.cursor.execute(query)
-            # result = self.cursor.fetchall()
-            print(result)
-        elif columnsData != None and whereClause == None:
-            print(f"prionting column data {columnsData}")
-            query = f"select {columnsData} from {tablename}"
-            result = pd.read_sql(query, self.conn)
-            # self.cursor.execute(query)
-            # result = self.cursor.fetchall()
-            print(result)
-        elif whereClause != None and columnsData == None:
-            query = f"select * from {tablename} where {whereClause}"
-            print(query)
-            result = pd.read_sql(query, self.conn)
-            # self.cursor.execute(query)
-            # result = self.cursor.fetchall()
-            print(result)
-        elif whereClause != None and columnsData != None:
-            query = f"select {columnsData} from {tablename} where {whereClause}"
-            result = pd.read_sql(query, self.conn)
-            print(result)
-        else:
-            result = []
-
     def TableExist(self, tablename):
         r = f'select count(*) from information_schema.tables where table_schema=DATABASE() and table_name="{tablename}"'
         self.cursor.execute(r)
@@ -115,25 +71,25 @@ class Sql:
         print(result)
 
     def fetchData(self, *args, **kwargs):
-        tableName = None
+        table_name = None
         columns = None
-        whereQueryList = []
-        whereQuery = None
-        queryStatement = None
+        where_query_list = []
+        where_query = None
+        query_statement = None
         orderby = ''
         whereQuery2 = ''
         if args[0]:
-            tableName = args[0]
+            table_name = args[0]
         if args[1:]:
             columns = ",".join(args[1:])
-        tableExist = self.TableExist(tableName)
+        tableExist = self.TableExist(table_name)
         if tableExist == 1:
             if kwargs.keys():
                 for key, value in kwargs.items():
                     if (isinstance(value, int) or isinstance(value, float)) and key != 'limit' and key != 'orderBy':
-                        whereQueryList.append(f"{key}={value}")
+                        where_query_list.append(f"{key}={value}")
                     if(isinstance(value, str)) and key != 'limit' and key != 'orderBy':
-                        whereQueryList.append(f"{key}='{value}'")
+                        where_query_list.append(f"{key}='{value}'")
                     if key == 'limit' and len(value) >= 2:
                         whereQuery2 += f" {key} {value[0]},{value[1]}"
                     elif key == 'limit' and len(value) == 1:
@@ -143,36 +99,36 @@ class Sql:
                             orderby += f"{i} "
                         whereQuery2 += f" order by {orderby}"
 
-                if len(whereQueryList) > 0:
-                    whereQuery = " and ".join(whereQueryList)
+                if len(where_query_list) > 0:
+                    where_query = " and ".join(where_query_list)
 
             print(f"whereQuery2")
 
-            if columns == None and len(whereQueryList) == 0:
-                queryStatement = f"SELECT * FROM {tableName} {whereQuery2}"
+            if columns is None and len(where_query_list) == 0:
+                query_statement = f"SELECT * FROM {table_name} {whereQuery2}"
 
-            elif len(whereQueryList) > 0 and columns == None:
-                queryStatement = f"SELECT * FROM {tableName} WHERE {whereQuery} {whereQuery2}"
+            elif len(where_query_list) > 0 and columns is None:
+                query_statement = f"SELECT * FROM {table_name} WHERE {where_query} {whereQuery2}"
 
-            elif columns != None and len(whereQueryList) == 0:
-                queryStatement = f"SELECT {columns} FROM {tableName} {whereQuery2}"
+            elif columns is not None and len(where_query_list) == 0:
+                query_statement = f"SELECT {columns} FROM {table_name} {whereQuery2}"
 
-            elif columns != None and len(whereQueryList) > 0:
+            elif columns is not None and len(where_query_list) > 0:
 
-                queryStatement = f"SELECT {columns} FROM {tableName} WHERE {whereQuery} {whereQuery2}"
+                query_statement = f"SELECT {columns} FROM {table_name} WHERE {where_query} {whereQuery2}"
             else:
                 print("Please enter the valid query")
             # if columns != None and len(whereQueryList) == 0 and whereQuery2:
             #     queryStatement = f"select {columns} from {tableName} {whereQuery2}"
 
-            print(queryStatement)
-            df = pd.read_sql(queryStatement, self.conn)
+            print(query_statement)
+            df = pd.read_sql(query_statement, self.conn)
             print(df)
         else:
-            print(f"Table with table name {tableName} does not exist")
+            print(f"Table with table name {table_name} does not exist")
 
 
 sql = Sql(user='root', host='localhost', password='owl', database='fastapi')
 # sql.fetchData("blogg")
 # sql.createTable("demo1", name=("varchar(20)", "not null"), roll=("int",))
-sql.fetchData("testing", orderBy=('ResponseId DESC',), limit=(20, 30))
+sql.fetchData("testing",limit=(10,))
